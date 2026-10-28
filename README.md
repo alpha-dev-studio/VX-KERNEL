@@ -1,15 +1,11 @@
 # VX-KERNEL
 
-An original x86-64 hybrid operating system kernel designed from the ground up for high performance, modularity, and stability. 
+An original x86-64 hybrid operating system kernel designed from the ground up for high performance, modularity, and stability.
 
-## Default Build (No Bootloader)
-
-By default, VX-KERNEL builds as a **bare, dependency-free kernel** with no bootloader attached. This makes it easy to embed, inspect, and modify without pulling in external bootloader code.
-
-### Included Subsystems
+## Included Subsystems
 
 - **Hybrid Architecture:** Combines microkernel-inspired service boundaries with monolithic performance.
-- **Memory Management:** Physical Memory Manager (PMM) bitmap and Virtual Memory Manager (VMM) skeletons (require Limine boot info to initialize fully).
+- **Memory Management:** Physical Memory Manager (PMM) bitmap and Virtual Memory Manager (VMM).
 - **CPU & Interrupts:** Full Interrupt Descriptor Table (IDT) and CPU exception handling.
 - **Privilege & System Calls:** GDT & Task State Segment (TSS) configured for Ring 0 / Ring 3 transitions with fast `syscall`/`sysret` MSR support.
 - **VQFS Filesystem:** Custom high-performance filesystem designed with 4KB block alignments, inode indexing, journaling, and crash safety.
@@ -17,60 +13,25 @@ By default, VX-KERNEL builds as a **bare, dependency-free kernel** with no bootl
 - **Win64 API Subsystem:** Native Windows API compatibility layer designed to support Windows applications.
 - **Kernel Objects:** Object manager, network stack, VFS layer, ACL security, dynamic kernel modules, and input handling.
 
-## Enabling Limine Bootloader (Optional)
-
-If you want to boot VX-KERNEL through Limine (UEFI/BIOS) with access to the bootloader-provided memory map, framebuffer, and Higher Half Direct Map (HHDM), run:
-
-```bash
-chmod +x add-limine.sh
-./add-limine.sh
-```
-
-This script:
-1. Adds `kernel/limine-protocol` as a git submodule.
-2. Copies `kernel/limine-protocol/include/limine.h` to `kernel/limine.h`.
-3. Patches `kernel/kernel.c` to request and consume Limine boot information.
-4. Stages all changes for commit.
-
-After running `add-limine.sh`:
-
-```bash
-git commit -m "Add Limine bootloader support"
-make clean
-make iso
-python3 run_test.py   # or make run
-```
-
-To remove Limine again:
-
-```bash
-git submodule deinit -f kernel/limine-protocol
-git rm -f kernel/limine-protocol kernel/limine.h
-git checkout kernel/kernel.c  # or restore from kernel/kernel.c.no-limine.bak
-```
-
-## Building and Testing (Default Mode)
+## Building and Testing
 
 Requirements:
 - WSL (Ubuntu) or Linux environment
-- GCC cross-compiler (`x86_64-linux-gnu-gcc`), binutils, xorriso, and QEMU.
+- GCC cross-compiler (`x86_64-linux-gnu-gcc`), binutils, and QEMU.
 
 To build the kernel ELF:
+
 ```bash
 make clean
 make all
 ```
 
-The default build produces `build/kernel.elf` — a freestanding ELF binary with no bootloader attached.
+This produces `build/kernel.elf` — a standalone, freestanding x86-64 kernel with no external bootloader dependencies.
 
-To build a raw ISO containing just the kernel ELF:
-```bash
-make iso
-```
+To inspect the built kernel:
 
-To run directly in QEMU **without Limine** (note: QEMU's `-kernel` requires a Linux-style boot header; use `add-limine.sh` for a proper bootable ISO):
 ```bash
-make run
+file build/kernel.elf
 ```
 
 ## Repository Layout
@@ -78,7 +39,7 @@ make run
 ```
 VX-KERNEL/
 ├── kernel/               # Kernel source (core + subsystems)
-│   ├── kernel.c          # Kernel entry point (standalone by default)
+│   ├── kernel.c          # Kernel entry point
 │   ├── memory.c/h        # Physical & virtual memory management
 │   ├── pmm.c/h           # Physical memory manager (bitmap)
 │   ├── vmm.c/h           # Virtual memory manager (page tables)
@@ -100,8 +61,6 @@ VX-KERNEL/
 │   ├── input.c/h         # Keyboard & mouse input
 │   ├── boot.s            # Assembly boot stub
 │   └── linker.ld         # Linker script
-├── boot/                 # Bootloader configuration (when Limine added)
-├── add-limine.sh         # Script to re-add Limine bootloader support
 ├── Makefile              # Build system
 ├── README.md             # This file
 ├── LICENSE
