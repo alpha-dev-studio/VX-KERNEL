@@ -1,6 +1,3 @@
-[submodule "limine-bin"]
-	path = limine-bin
-	url = https://github.com/limine-bootloader/limine.git
 [submodule "kernel/limine-protocol"]
 	path = kernel/limine-protocol
 	url = https://github.com/limine-bootloader/limine-protocol.git

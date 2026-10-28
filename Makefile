@@ -5,13 +5,13 @@ LD = x86_64-linux-gnu-ld
 CFLAGS = -Wall -Wextra -O2 -ffreestanding -fno-pie -fno-stack-protector -mno-red-zone -mno-sse -mno-sse2 -mno-mmx -mno-avx -mcmodel=kernel -Ikernel
 LDFLAGS = -nostdlib -T kernel/linker.ld -static
 
-OBJS = build/kernel.o build/memory.o build/pmm.o build/vmm.o build/idt.o build/gdt.o build/syscall.o build/syscall_entry.o build/vqfs.o build/vqfs_test.o build/graphics.o build/font_data.o build/image.o build/desktop.o build/compositor.o build/input.o build/sched.o build/ipc.o build/drivers.o build/winapi.o build/object_manager.o build/net_stack.o build/vfs_layer.o build/security_acls.o build/kernel_modules.o
-KERNEL = build/kernel.elf
-ISO = build/veyro-os.iso
+OBJS = build/kernel.o build/memory.o build/pmm.o build/vmm.o build/idt.o build/gdt.o build/syscall.o build/syscall_entry.o build/vqfs.o build/vqfs_test.o build/graphics.o build/input.o build/sched.o build/ipc.o build/drivers.o build/winapi.o build/object_manager.o build/net_stack.o build/vfs_layer.o build/security_acls.o build/kernel_modules.o
+KERNEL_ELF = build/kernel.elf
+ISO = build/vx-kernel.iso
 
 .PHONY: all clean run iso
 
-all: $(ISO)
+all: $(KERNEL_ELF)
 
 build/kernel.o: kernel/kernel.c
 	@mkdir -p build
@@ -57,22 +57,6 @@ build/graphics.o: kernel/graphics.c
 	@mkdir -p build
 	$(CC) $(CFLAGS) -c kernel/graphics.c -o build/graphics.o
 
-build/font_data.o: kernel/font_data.c
-	@mkdir -p build
-	$(CC) $(CFLAGS) -c kernel/font_data.c -o build/font_data.o
-
-build/image.o: kernel/image.c
-	@mkdir -p build
-	$(CC) $(CFLAGS) -c kernel/image.c -o build/image.o
-
-build/desktop.o: kernel/desktop.c
-	@mkdir -p build
-	$(CC) $(CFLAGS) -c kernel/desktop.c -o build/desktop.o
-
-build/compositor.o: kernel/compositor.c
-	@mkdir -p build
-	$(CC) $(CFLAGS) -c kernel/compositor.c -o build/compositor.o
-
 build/input.o: kernel/input.c
 	@mkdir -p build
 	$(CC) $(CFLAGS) -c kernel/input.c -o build/input.o
@@ -113,49 +97,78 @@ build/kernel_modules.o: kernel/kernel_modules.c
 	@mkdir -p build
 	$(CC) $(CFLAGS) -c kernel/kernel_modules.c -o build/kernel_modules.o
 
-$(KERNEL): $(OBJS)
-	$(LD) $(LDFLAGS) $(OBJS) -o $(KERNEL)
+$(KERNEL_ELF): $(OBJS)
+	$(LD) $(LDFLAGS) $(OBJS) -o $(KERNEL_ELF)
 
-iso: $(ISO)
+# ---------------------------------------------------------------------------
+# ISO targets
+# ---------------------------------------------------------------------------
+iso: $(KERNEL_ELF)
+	@mkdir -p build/iso_root/boot/limine build/iso_root/EFI/BOOT
+	@if [ -f "kernel/limine.h" ]; then \
+		echo "Building Limine ISO..."; \
+		cp $(KERNEL_ELF) build/iso_root/boot/kernel; \
+		cp boot/limine.conf build/iso_root/boot/limine/limine.conf; \
+		cp limine-bin/limine-bios-cd.bin build/iso_root/boot/limine/; \
+		cp limine-bin/limine-bios.sys build/iso_root/boot/limine/; \
+		cp limine-bin/limine-uefi-cd.bin build/iso_root/boot/limine/; \
+		cp limine-bin/BOOTX64.EFI build/iso_root/EFI/BOOT/; \
+		cp limine-bin/BOOTIA32.EFI build/iso_root/EFI/BOOT/; \
+		xorriso -as mkisofs \
+			-iso-level 3 \
+			-R -J \
+			-b boot/limine/limine-bios-cd.bin \
+			-no-emul-boot -boot-load-size 4 -boot-info-table \
+			--efi-boot boot/limine/limine-uefi-cd.bin \
+			-efi-boot-part --efi-boot-image \
+			--protective-msdos-label \
+			build/iso_root -o $(ISO); \
+		./limine-bin/limine bios-install $(ISO) || true; \
+		echo "Limine ISO built successfully at $$(pwd)/$(ISO)"; \
+	else \
+		echo "Building bare ISO (kernel ELF only, not bootable)..."; \
+		cp $(KERNEL_ELF) build/iso_root/boot/kernel; \
+		xorriso -as mkisofs \
+			-iso-level 3 \
+			-R -J \
+			build/iso_root -o $(ISO); \
+		echo "Bare ISO built successfully at $$(pwd)/$(ISO)"; \
+		echo "Note: Use ./add-limine.sh to make it bootable with Limine."; \
+	fi
 
-$(ISO): $(KERNEL)
-	@echo "Building Veyro OS ISO..."
-	@mkdir -p build/iso_root/boot/limine
-	@mkdir -p build/iso_root/EFI/BOOT
-	
-	# Copy kernel ELF and config
-	cp $(KERNEL) build/iso_root/boot/kernel
-	cp boot/limine.conf build/iso_root/boot/limine/limine.conf
-	
-	# Copy Limine boot files
-	cp limine-bin/limine-bios-cd.bin build/iso_root/boot/limine/
-	cp limine-bin/limine-bios.sys build/iso_root/boot/limine/
-	cp limine-bin/limine-uefi-cd.bin build/iso_root/boot/limine/
-	cp limine-bin/BOOTX64.EFI build/iso_root/EFI/BOOT/
-	cp limine-bin/BOOTIA32.EFI build/iso_root/EFI/BOOT/
-	
-	# Create bootable ISO using xorriso with Rock Ridge (-R) and Joliet (-J)
-	xorriso -as mkisofs \
-		-iso-level 3 \
-		-R -J \
-		-b boot/limine/limine-bios-cd.bin \
-		-no-emul-boot -boot-load-size 4 -boot-info-table \
-		--efi-boot boot/limine/limine-uefi-cd.bin \
-		-efi-boot-part --efi-boot-image \
-		--protective-msdos-label \
-		build/iso_root -o $(ISO)
-		
-	./limine-bin/limine bios-install $(ISO) || true
-	@echo "ISO built successfully at `pwd`/$(ISO)"
-
-run: $(ISO)
-	qemu-system-x86_64 \
-		-m 2G \
-		-bios /usr/share/ovmf/OVMF.fd \
-		-drive file=$(ISO),format=raw,media=cdrom \
-		-boot d \
-		-serial stdio \
-		-no-reboot -no-shutdown
+# ---------------------------------------------------------------------------
+# Run targets
+# ---------------------------------------------------------------------------
+run: $(KERNEL_ELF)
+	@if [ -f "kernel/limine.h" ]; then \
+		if [ -f "$(ISO)" ]; then \
+			qemu-system-x86_64 \
+				-m 2G \
+				-bios /usr/share/ovmf/OVMF.fd \
+				-drive file=$(ISO),format=raw,media=cdrom \
+				-boot d \
+				-serial stdio \
+				-no-reboot -no-shutdown; \
+		else \
+			echo "Limine ISO not found. Run: make iso"; \
+			exit 1; \
+		fi; \
+	else \
+		echo ""; \
+		echo "============================================================"; \
+		echo "  VX-KERNEL is built as a bare kernel (no Limine bootloader)."; \
+		echo "  QEMU -kernel requires a Linux PVH ELF note."; \
+		echo ""; \
+		echo "  To boot with Limine, run:"; \
+		echo "    ./add-limine.sh"; \
+		echo "    make clean && make iso"; \
+		echo "    make run"; \
+		echo ""; \
+		echo "  To inspect the bare kernel ELF:"; \
+		echo "    file build/kernel.elf"; \
+		echo "============================================================"; \
+		exit 1; \
+	fi
 
 clean:
 	rm -rf build
