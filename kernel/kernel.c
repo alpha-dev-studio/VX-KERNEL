@@ -4,33 +4,49 @@
 #include "limine.h"
 #include "memory.h"
 #include "pmm.h"
+#include "vmm.h"
+#include "idt.h"
+#include "gdt.h"
+#include "syscall.h"
+#include "vqfs.h"
+#include "vqfs_test.h"
+#include "graphics.h"
+#include "sched.h"
+#include "ipc.h"
+#include "drivers.h"
+#include "winapi.h"
+#include "object_manager.h"
+#include "net_stack.h"
+#include "vfs_layer.h"
+#include "security_acls.h"
+#include "kernel_modules.h"
 
-// Set the base revision to 3
+// Request Limine base protocol revision 3
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(3);
 
-// Framebuffer request
+// Request UEFI / VBE graphical framebuffer from bootloader
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_framebuffer_request framebuffer_request = {
     .id = LIMINE_FRAMEBUFFER_REQUEST_ID,
     .revision = 0
 };
 
-// Memory map request
+// Request physical memory map from bootloader
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_memmap_request memmap_request = {
     .id = LIMINE_MEMMAP_REQUEST_ID,
     .revision = 0
 };
 
-// HHDM request
+// Request Higher Half Direct Map (HHDM) offset for virtual memory mapping
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_hhdm_request hhdm_request = {
     .id = LIMINE_HHDM_REQUEST_ID,
     .revision = 0
 };
 
-// Markers
+// Limine request section markers
 __attribute__((used, section(".limine_requests_start")))
 static volatile uint64_t limine_requests_start_marker[] = LIMINE_REQUESTS_START_MARKER;
 
@@ -80,7 +96,7 @@ static void hcf(void) {
 
 void kmain(void) {
     serial_init();
-    serial_print("\n[VX-KERNEL] Booting VX-KERNEL (M1 - PMM & Memory Init)...\n");
+    serial_print("\n[VX-KERNEL] Booting VX-KERNEL...\n");
 
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
         serial_print("[VX-KERNEL] ERROR: Base revision not supported!\n");
@@ -93,26 +109,31 @@ void kmain(void) {
     }
 
     pmm_init(memmap_request.response, hhdm_request.response->offset);
-    serial_print("[VX-KERNEL] PMM Initialized successfully.\n");
+    vmm_init(hhdm_request.response->offset);
+    idt_init();
+    gdt_init();
+    syscall_init();
+    scheduler_init();
 
-    void *page1 = pmm_alloc_page();
-    void *page2 = pmm_alloc_page();
-    if (page1 && page2) {
-        serial_print("[VX-KERNEL] PMM allocation test passed.\n");
-    } else {
-        serial_print("[VX-KERNEL] ERROR: PMM allocation test failed!\n");
-    }
+    object_manager_init();
+    net_stack_init();
+    vfs_init();
+    kernel_modules_init();
+    drivers_init_all();
+    winapi_subsystem_init();
 
     if (framebuffer_request.response != NULL && framebuffer_request.response->framebuffer_count > 0) {
         struct limine_framebuffer *fb = framebuffer_request.response->framebuffers[0];
-        volatile uint32_t *fb_ptr = fb->address;
-        for (uint64_t i = 0; i < (fb->width * fb->height); i++) {
-            fb_ptr[i] = 0x0000FF00; // Green color
-        }
+        graphics_init(fb);
+
+        clear_screen(0x00001030);
+        draw_rect(50, 50, 600, 40, 0x00004080);
+        draw_string(70, 62, "Veyro OS - VX-KERNEL", 0x00FFFFFF);
+
+        draw_rect(50, 100, 600, 300, 0x00102040);
+        draw_string(70, 120, "Status: Subsystems Online.", 0x0000FF00);
     }
 
     serial_print("VX_KERNEL_READY\n");
-    serial_print("[VX-KERNEL] M1 Initialization complete. Entering controlled halt.\n");
-
     hcf();
 }
