@@ -3,7 +3,7 @@ import subprocess
 p = subprocess.Popen([
     "qemu-system-x86_64",
     "-m", "2G",
-    "-cdrom", "build/vx-kernel.iso",
+    "-cdrom", "build/veyro-os.iso",
     "-boot", "d",
     "-nographic",
     "-no-reboot"
