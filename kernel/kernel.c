@@ -2,10 +2,11 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "limine.h"
+#include "memory.h"
 
-// Base revision request (revision 6)
+// Set the base revision to 3 (or check properly)
 __attribute__((used, section(".limine_requests")))
-static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(6);
+static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(3);
 
 // Framebuffer request
 __attribute__((used, section(".limine_requests")))
@@ -74,9 +75,8 @@ void kmain(void) {
     if (framebuffer_request.response != NULL && framebuffer_request.response->framebuffer_count > 0) {
         struct limine_framebuffer *fb = framebuffer_request.response->framebuffers[0];
         volatile uint32_t *fb_ptr = fb->address;
-        // Paint screen green (0x00FF00)
         for (uint64_t i = 0; i < (fb->width * fb->height); i++) {
-            fb_ptr[i] = 0x0000FF00;
+            fb_ptr[i] = 0x0000FF00; // Green color
         }
     }
 
