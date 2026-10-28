@@ -155,18 +155,8 @@ run: $(KERNEL_ELF)
 		fi; \
 	else \
 		echo ""; \
-		echo "============================================================"; \
-		echo "  VX-KERNEL is built as a bare kernel (no Limine bootloader)."; \
-		echo "  QEMU -kernel requires a Linux PVH ELF note."; \
-		echo ""; \
-		echo "  To boot with Limine, run:"; \
-		echo "    ./add-limine.sh"; \
-		echo "    make clean && make iso"; \
-		echo "    make run"; \
-		echo ""; \
-		echo "  To inspect the bare kernel ELF:"; \
-		echo "    file build/kernel.elf"; \
-		echo "============================================================"; \
+		echo "VX-KERNEL is built as a bare kernel (no Limine bootloader)."; \
+		echo "Run './add-limine.sh' to enable Limine boot."; \
 		exit 1; \
 	fi
 
