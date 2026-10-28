@@ -4,7 +4,7 @@ LD = x86_64-linux-gnu-ld
 CFLAGS = -Wall -Wextra -O2 -ffreestanding -fno-pie -fno-stack-protector -mno-red-zone -mno-sse -mno-sse2 -mno-mmx -mno-avx -mcmodel=kernel -Ikernel
 LDFLAGS = -nostdlib -T kernel/linker.ld -static
 
-OBJS = build/kernel.o build/memory.o
+OBJS = build/kernel.o build/memory.o build/pmm.o
 KERNEL = build/kernel.elf
 ISO = build/vx-kernel.iso
 
@@ -19,6 +19,10 @@ build/kernel.o: kernel/kernel.c
 build/memory.o: kernel/memory.c
 	@mkdir -p build
 	$(CC) $(CFLAGS) -c kernel/memory.c -o build/memory.o
+
+build/pmm.o: kernel/pmm.c
+	@mkdir -p build
+	$(CC) $(CFLAGS) -c kernel/pmm.c -o build/pmm.o
 
 $(KERNEL): $(OBJS)
 	$(LD) $(LDFLAGS) $(OBJS) -o $(KERNEL)

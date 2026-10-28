@@ -3,8 +3,9 @@
 #include <stdbool.h>
 #include "limine.h"
 #include "memory.h"
+#include "pmm.h"
 
-// Set the base revision to 3 (or check properly)
+// Set the base revision to 3
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(3);
 
@@ -12,6 +13,20 @@ static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(3);
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_framebuffer_request framebuffer_request = {
     .id = LIMINE_FRAMEBUFFER_REQUEST_ID,
+    .revision = 0
+};
+
+// Memory map request
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_memmap_request memmap_request = {
+    .id = LIMINE_MEMMAP_REQUEST_ID,
+    .revision = 0
+};
+
+// HHDM request
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_hhdm_request hhdm_request = {
+    .id = LIMINE_HHDM_REQUEST_ID,
     .revision = 0
 };
 
@@ -65,11 +80,27 @@ static void hcf(void) {
 
 void kmain(void) {
     serial_init();
-    serial_print("\n[VX-KERNEL] Booting VX-KERNEL (Hybrid Architecture, M0 Milestone)...\n");
+    serial_print("\n[VX-KERNEL] Booting VX-KERNEL (M1 - PMM & Memory Init)...\n");
 
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
         serial_print("[VX-KERNEL] ERROR: Base revision not supported!\n");
         hcf();
+    }
+
+    if (memmap_request.response == NULL || hhdm_request.response == NULL) {
+        serial_print("[VX-KERNEL] ERROR: Missing Limine memory map or HHDM response!\n");
+        hcf();
+    }
+
+    pmm_init(memmap_request.response, hhdm_request.response->offset);
+    serial_print("[VX-KERNEL] PMM Initialized successfully.\n");
+
+    void *page1 = pmm_alloc_page();
+    void *page2 = pmm_alloc_page();
+    if (page1 && page2) {
+        serial_print("[VX-KERNEL] PMM allocation test passed.\n");
+    } else {
+        serial_print("[VX-KERNEL] ERROR: PMM allocation test failed!\n");
     }
 
     if (framebuffer_request.response != NULL && framebuffer_request.response->framebuffer_count > 0) {
@@ -81,7 +112,7 @@ void kmain(void) {
     }
 
     serial_print("VX_KERNEL_READY\n");
-    serial_print("[VX-KERNEL] Initialization complete. Entering controlled halt.\n");
+    serial_print("[VX-KERNEL] M1 Initialization complete. Entering controlled halt.\n");
 
     hcf();
 }
