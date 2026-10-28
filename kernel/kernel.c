@@ -11,6 +11,8 @@
 #include "vqfs.h"
 #include "vqfs_test.h"
 #include "graphics.h"
+#include "image.h"
+#include "desktop.h"
 #include "sched.h"
 #include "ipc.h"
 #include "drivers.h"
@@ -96,15 +98,15 @@ static void hcf(void) {
 
 void kmain(void) {
     serial_init();
-    serial_print("\n[VX-KERNEL] Booting VX-KERNEL...\n");
+    serial_print("\n[VeyroOS] Booting Veyro OS Desktop Environment...\n");
 
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
-        serial_print("[VX-KERNEL] ERROR: Base revision not supported!\n");
+        serial_print("[VeyroOS] ERROR: Base revision not supported!\n");
         hcf();
     }
 
     if (memmap_request.response == NULL || hhdm_request.response == NULL) {
-        serial_print("[VX-KERNEL] ERROR: Missing Limine memory map or HHDM response!\n");
+        serial_print("[VeyroOS] ERROR: Missing Limine memory map or HHDM response!\n");
         hcf();
     }
 
@@ -121,17 +123,14 @@ void kmain(void) {
     kernel_modules_init();
     drivers_init_all();
     winapi_subsystem_init();
+    desktop_init();
 
     if (framebuffer_request.response != NULL && framebuffer_request.response->framebuffer_count > 0) {
         struct limine_framebuffer *fb = framebuffer_request.response->framebuffers[0];
         graphics_init(fb);
 
-        clear_screen(0x00001030);
-        draw_rect(50, 50, 600, 40, 0x00004080);
-        draw_string(70, 62, "Veyro OS - VX-KERNEL", 0x00FFFFFF);
-
-        draw_rect(50, 100, 600, 300, 0x00102040);
-        draw_string(70, 120, "Status: Subsystems Online.", 0x0000FF00);
+        // Render Veyro OS Glassmorphic Desktop & Prebuilt Apps Environment
+        desktop_render_frame();
     }
 
     serial_print("VX_KERNEL_READY\n");

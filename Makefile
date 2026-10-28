@@ -5,9 +5,9 @@ LD = x86_64-linux-gnu-ld
 CFLAGS = -Wall -Wextra -O2 -ffreestanding -fno-pie -fno-stack-protector -mno-red-zone -mno-sse -mno-sse2 -mno-mmx -mno-avx -mcmodel=kernel -Ikernel
 LDFLAGS = -nostdlib -T kernel/linker.ld -static
 
-OBJS = build/kernel.o build/memory.o build/pmm.o build/vmm.o build/idt.o build/gdt.o build/syscall.o build/syscall_entry.o build/vqfs.o build/vqfs_test.o build/graphics.o build/sched.o build/ipc.o build/drivers.o build/winapi.o build/object_manager.o build/net_stack.o build/vfs_layer.o build/security_acls.o build/kernel_modules.o
+OBJS = build/kernel.o build/memory.o build/pmm.o build/vmm.o build/idt.o build/gdt.o build/syscall.o build/syscall_entry.o build/vqfs.o build/vqfs_test.o build/graphics.o build/font_data.o build/image.o build/desktop.o build/compositor.o build/input.o build/sched.o build/ipc.o build/drivers.o build/winapi.o build/object_manager.o build/net_stack.o build/vfs_layer.o build/security_acls.o build/kernel_modules.o
 KERNEL = build/kernel.elf
-ISO = build/vx-kernel.iso
+ISO = build/veyro-os.iso
 
 .PHONY: all clean run iso
 
@@ -57,6 +57,26 @@ build/graphics.o: kernel/graphics.c
 	@mkdir -p build
 	$(CC) $(CFLAGS) -c kernel/graphics.c -o build/graphics.o
 
+build/font_data.o: kernel/font_data.c
+	@mkdir -p build
+	$(CC) $(CFLAGS) -c kernel/font_data.c -o build/font_data.o
+
+build/image.o: kernel/image.c
+	@mkdir -p build
+	$(CC) $(CFLAGS) -c kernel/image.c -o build/image.o
+
+build/desktop.o: kernel/desktop.c
+	@mkdir -p build
+	$(CC) $(CFLAGS) -c kernel/desktop.c -o build/desktop.o
+
+build/compositor.o: kernel/compositor.c
+	@mkdir -p build
+	$(CC) $(CFLAGS) -c kernel/compositor.c -o build/compositor.o
+
+build/input.o: kernel/input.c
+	@mkdir -p build
+	$(CC) $(CFLAGS) -c kernel/input.c -o build/input.o
+
 build/sched.o: kernel/sched.c
 	@mkdir -p build
 	$(CC) $(CFLAGS) -c kernel/sched.c -o build/sched.o
@@ -99,7 +119,7 @@ $(KERNEL): $(OBJS)
 iso: $(ISO)
 
 $(ISO): $(KERNEL)
-	@echo "Building Limine ISO..."
+	@echo "Building Veyro OS ISO..."
 	@mkdir -p build/iso_root/boot/limine
 	@mkdir -p build/iso_root/EFI/BOOT
 	
@@ -126,7 +146,7 @@ $(ISO): $(KERNEL)
 		build/iso_root -o $(ISO)
 		
 	./limine-bin/limine bios-install $(ISO) || true
-	@echo "ISO built successfully at $(ISO)"
+	@echo "ISO built successfully at `pwd`/$(ISO)"
 
 run: $(ISO)
 	qemu-system-x86_64 \
