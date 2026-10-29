@@ -132,8 +132,7 @@ iso: $(KERNEL_ELF)
 			-iso-level 3 \
 			-R -J \
 			build/iso_root -o $(ISO); \
-		echo "Bare ISO built successfully at $$(pwd)/$(ISO)"; \
-		echo "Note: Use ./add-limine.sh to make it bootable with Limine."; \
+		echo "ISO built successfully at $$(pwd)/$(ISO)"; \
 	fi
 
 # ---------------------------------------------------------------------------
